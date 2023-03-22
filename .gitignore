@@ -1,0 +1,7 @@
+*.wav
+*.bin
+*.mp4
+*.mkv
+.DS_Store
+Debug
+targetConfigs
