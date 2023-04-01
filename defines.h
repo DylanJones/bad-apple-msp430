@@ -9,9 +9,6 @@
 #define DEFINES_H_
 
 typedef unsigned int size_t;
-#ifndef __cplusplus
-typedef unsigned char bool;
-#endif
 
 #define BIC(reg, bit) reg &= ~(bit);
 #define BIS(reg, bit) reg |= (bit);

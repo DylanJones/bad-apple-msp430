@@ -5,11 +5,16 @@
  *      Author: dylan
  */
 
-#ifndef SDCARD_HPP_
-#define SDCARD_HPP_
+#ifndef SDCARD_H_
+#define SDCARD_H_
+#ifdef __cplusplus
+extern "C" {
+#endif
 
+#include "defines.h"
 #include <stdint.h>
-#include "SdInfo.hpp"
+#include <SdInfo.h>
+#include <stdbool.h>
 
 extern uint16_t sd_errorCode;
 extern uint16_t sd_status;
@@ -20,4 +25,8 @@ uint8_t sd_acmd(uint8_t acmd, uint32_t arg);
 bool sd_read_block(uint32_t sector, uint8_t *buf);
 bool sd_init();
 
-#endif /* SDCARD_HPP_ */
+
+#ifdef __cplusplus
+}
+#endif
+#endif /* SDCARD_H_ */

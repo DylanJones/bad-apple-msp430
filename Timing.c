@@ -6,8 +6,9 @@
  */
 
 #include <Timing.h>
+#include <stdbool.h>
 
-volatile static char msTriggered = 0;
+volatile static bool msTriggered = false;
 
 /*****
  * API functions
@@ -28,7 +29,7 @@ void aclk_init() {
 
 void smclk_init() {
     // high speed system (16 MHz MCLK)
-    FRCTL0 = FRCTLPW | NWAITS_2; // unlock FRCTL, enable wait states
+    FRCTL0 = FRCTLPW | NWAITS_1; // unlock FRCTL, enable wait states
     FRCTL0_H = 0; // lock FRCTL
     CSCTL0 = CSKEY; // unlock CSCTL
     CSCTL1 = DCORSEL | DCOFSEL_4; // very HF cpu
@@ -60,7 +61,7 @@ void delay(millis_t ms) {
     TA3CTL = 0;
     // Schedule interrupt for X ticks in the future
     TA3CCR0 = TA3R + ms;
-    msTriggered = 0;
+    msTriggered = false;
     // Make sure we're being interrupted when we need to be
     TA3CCTL0 = CCIE;
     TA3CTL = TASSEL__ACLK + ID__8 + MC__CONTINOUS;
@@ -79,6 +80,6 @@ void delay(millis_t ms) {
 #pragma vector=TIMER3_A0_VECTOR
 __interrupt void TimerA3_CCR0_ISR() {
     // Do nothing except wake up from LPM (and set the flag).
-    msTriggered = 1;
+    msTriggered = true;
     __low_power_mode_off_on_exit();
 }

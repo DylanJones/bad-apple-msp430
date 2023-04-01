@@ -6,6 +6,7 @@
  */
 #include "spi.h"
 #include "defines.h"
+#include <stdbool.h>
 #include <stdint.h>
 #include <msp430.h>
 
@@ -39,21 +40,25 @@ static void dma_rx_setup(uint8_t *buf, size_t size) {
     // Setup DMA1 to receive
     DMACTL0 |= DMA1TSEL__UCB0RXIFG0;
     DMA1CTL = DMADT_0 + DMADSTINCR_3 + DMASRCINCR_0 + DMASRCBYTE + DMADSTBYTE;
-    DMA1SA = (__SFR_FARPTR)(uint32_t)&UCB0RXBUF;
+//    DMA1SA = (__SFR_FARPTR)(uint32_t)&UCB0RXBUF;
+    __data20_write_long((unsigned long)&DMA1SA, (unsigned long)&UCB0RXBUF);
     DMA1SZ = size;
-    DMA1DA = buf;
+//    DMA1DA = buf;
+    __data20_write_long((unsigned long)&DMA1DA, (unsigned long)buf);
 }
 
-static void dma_tx_setup(uint8_t *buf, size_t size) {
+void dma_tx_setup(const uint8_t *buf, size_t size) {
     // Setup DMA2 to transmit
     DMACTL1 |= DMA2TSEL__UCB0TXIFG0;
     DMA2CTL = DMADT_0 + DMADSTINCR_0 + DMASRCINCR_3 + DMASRCBYTE + DMADSTBYTE;
-    DMA2SA = buf;
+//    DMA2SA = buf;
+    __data20_write_long((unsigned long)&DMA2SA, (unsigned long)buf);
     DMA2SZ = size;
-    DMA2DA = &UCB0TXBUF;
+//    DMA2DA = &UCB0TXBUF;
+    __data20_write_long((unsigned long)&DMA2DA, (unsigned long)&UCB0TXBUF);
 }
 
-volatile static bool dmaDone = 0;
+volatile bool dmaDone = 0;
 #pragma vector=DMA_VECTOR
 __interrupt void dmaInterrupt() {
     dmaDone = 1;
@@ -78,6 +83,20 @@ void spi_send(const uint8_t *output, size_t size) {
     for (i = 0; i < size; i++) {
         spi_send_byte(output[i]);
     }
+    return;
+}
+
+void spi_send_dma(const uint8_t *output, size_t size) {
+    dma_tx_setup(output, size);
+    // start 'em up
+    dmaDone = 0;
+    DMA2CTL |= DMAEN + DMAIE;
+    UCB0IFG &= ~(UCTXIFG | UCRXIFG);
+    UCB0IFG |= UCTXIFG | UCRXIFG;
+    // wait for DMAs to finish
+    while(!dmaDone);
+    // disable DMAs
+    BIC(DMA2CTL, DMAEN + DMAIE);
 }
 
 void spi_receive(uint8_t *input, uint8_t fillByte, size_t size) {
@@ -86,23 +105,26 @@ void spi_receive(uint8_t *input, uint8_t fillByte, size_t size) {
         input[i] = spi_send_byte(fillByte);
     }
     return;
+}
 
+void spi_receive_dma(uint8_t *input, uint8_t fillByte, size_t size) {
     // TODO: Clean this up and make it easier to use in other functions!
-    dma_rx_setup(input, size);
-    dma_tx_setup(&fillByte, size);
-    // switch it around so it just repeats fillByte instead
-    DMA2CTL = DMADT_0 + DMADSTINCR_0 + DMASRCINCR_0 + DMASRCBYTE + DMADSTBYTE;
-    // start 'em up
-    dmaDone = 0;
-    DMA1CTL |= DMAEN;
-    DMA2CTL |= DMAEN + DMAIE;
-    UCB0IFG &= ~(UCTXIFG | UCRXIFG);
-    UCB0IFG |= UCTXIFG | UCRXIFG;
-    // wait for DMAs to finish
-    while(!dmaDone);
-    // disable DMAs
-    BIC(DMA1CTL, DMAEN);
-    BIC(DMA2CTL, DMAEN + DMAIE);
+     dma_rx_setup(input, size);
+     dma_tx_setup(&fillByte, size - 1);
+     // switch it around so it just repeats fillByte instead
+     DMA2CTL = DMADT_0 + DMADSTINCR_0 + DMASRCINCR_0 + DMASRCBYTE + DMADSTBYTE;
+     // start 'em up
+     dmaDone = 0;
+     DMA1CTL |= DMAEN;
+     DMA2CTL |= DMAEN + DMAIE;
+//     UCB0IFG &= ~(UCTXIFG | UCRXIFG);
+//     UCB0IFG |= UCTXIFG | UCRXIFG;
+     UCB0TXBUF = 0xFF;
+     // wait for DMAs to finish
+     while(!dmaDone);
+     // disable DMAs
+     BIC(DMA1CTL, DMAEN);
+     BIC(DMA2CTL, DMAEN + DMAIE);
 }
 
 uint8_t spi_send_byte(uint8_t byte) {

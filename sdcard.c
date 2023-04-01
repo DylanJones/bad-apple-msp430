@@ -9,7 +9,7 @@
  */
 
 #include <msp430.h>
-#include "sdcard.hpp"
+#include <sdcard.h>
 #include "spi.h"
 #include "defines.h"
 #include "Timing.h"
@@ -24,11 +24,11 @@ uint16_t sd_status = 0;
 uint8_t sd_cardType = 0;
 
 static inline void sd_select() {
-    BIC(P1OUT, BIT3);
+    BIC(P3OUT, BIT7);
 }
 
 static inline void sd_unselect() {
-    BIS(P1OUT, BIT3);
+    BIS(P3OUT, BIT7);
 }
 
 /**
@@ -84,9 +84,9 @@ bool sd_init() {
     //    If response is 0x07, wrong CRC7 code was sent
     // 4. Send CMD8 (interface condition)
     uint8_t buf[16] = { 0xFF };
+    int i, j;
     uint16_t startTime;
     uint32_t arg;
-    int i;
 
     delay(5);
 
@@ -101,12 +101,13 @@ bool sd_init() {
         if (sd_command(CMD0, 0) == R1_IDLE_STATE) {
             break;
         }
+        sd_unselect();
         if (i == SD_CMD0_RETRY) {
             sd_errorCode = SD_CARD_ERROR_CMD0;
             goto fail;
         }
         // Force any active transfer to end for an already initialized card.
-        for (uint8_t j = 0; j < 0xF; j++) {
+        for (j = 0; j < 0xF; j++) {
           spi_receive(buf, 0xFF, 16);
         }
     }
@@ -115,7 +116,7 @@ bool sd_init() {
     if (!(sd_command(CMD8, 0x1AA) & R1_ILLEGAL_COMMAND)) {
         // Supports CMD8!  Check that we got our 0xAA byte echoed back.
         sd_cardType = SD_CARD_TYPE_SD2;
-        for (uint8_t i = 4; i > 0; i--) {
+        for (i = 4; i > 0; i--) {
             sd_status = spi_receive_byte();
         }
         // Check that we got the correct response echoed back
@@ -189,7 +190,7 @@ bool sd_read_data(uint8_t *buf, size_t size) {
     }
 
     // Receive the full block
-    spi_receive(buf, 0xFF, size);
+    spi_receive_dma(buf, 0xFF, size);
 
     // Discard CRC
     spi_receive_byte();

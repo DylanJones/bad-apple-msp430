@@ -22,26 +22,30 @@
  */
 
 #include <msp430.h>
-#include <sdcard.hpp>
-
+#include <sdcard.h>
 #include <Timing.h>
+#include <stdlib.h>
+#include <string.h>
+#include <cstring>
 #include "spi.h"
 #include "defines.h"
 #include "lcd.h"
+#include "tft.h"
 
-#define FRAME_SIZE 4414
+
 #define AUDIO_FRAME_SIZE 1470
-#define VIDEO_FRAME_SIZE 2944
+#define VIDEO_FRAME_SIZE 2880
+#define FRAME_SIZE (AUDIO_FRAME_SIZE + VIDEO_FRAME_SIZE)
 
 uint8_t  __attribute__((persistent)) framebuffer_a[FRAME_SIZE] = { 0 };
-uint8_t __attribute__((persistent)) framebuffer_b[FRAME_SIZE] = { 10 };
+uint8_t __attribute__((persistent)) framebuffer_b[FRAME_SIZE] = { 0 };
 uint8_t __attribute__((persistent)) block_buffer[512] = { 0 };
 
 // SRAM globals
 uint16_t frame_number = 0;
 uint16_t current_block = 0;
 uint16_t current_block_offset = 0;
-volatile uint8_t nextFrame = 0;
+volatile bool nextFrame = 0;
 
 // Functions
 bool read_frame(uint8_t *frame_buffer);
@@ -60,14 +64,10 @@ void msp_init() {
     spi_init();
 
     // Pins:
-    BIS(P2DIR, BIT5); // P2.5 (display) as CS output. Active low.
-    BIS(P2OUT, BIT5); // Pull lines high - chips aren't selected right now.
-    BIS(P1DIR, BIT3); // SD card CS output, active low
-    BIS(P1OUT, BIT3);
-
-    BIS(P2DIR, BIT6 | BIT7); // p2.6/p2.7 are LED outputs
-    BIC(P2OUT, BIT6 | BIT7);
-    BIS(P3DIR, BIT6 | BIT7); // p3.6/p3.7 are also LEDs
+    BIS(P2DIR, BIT2 | BIT6 | BIT7);
+    BIS(P2OUT, BIT2 | BIT6 | BIT7);
+    BIS(P3DIR, BIT6 | BIT7);
+    BIS(P3OUT, BIT6 | BIT7);
 
     // Timer A1: PWM DAC
     // Blisteringly fast 16MHz count, 6-bit PWM for a frequency of ~250kHz
@@ -97,7 +97,8 @@ void msp_init() {
     // DMA0: Audio buffer to TA0CCR1
     DMACTL0 |= DMA0TSEL__TB0CCR0;
     DMA0CTL = DMADT_0 + DMADSTINCR_0 + DMASRCINCR_3 + DMASRCBYTE + DMADSTBYTE + DMALEVEL;
-    DMA0DA = (__SFR_FARPTR)(uint32_t)&TA1CCR2;
+//    DMA0DA = (__SFR_FARPTR)(uint32_t)&TA1CCR2;
+    __data20_write_long((uint32_t)&DMA0DA, (uint32_t)&TA1CCR2);
     DMA0SZ = AUDIO_FRAME_SIZE;
     // DMDA0SA is unset - main loop will set it and enable the transfer
 }
@@ -113,44 +114,79 @@ void main(void) {
         displayNum(sd_errorCode);
         for (;;);
 	}
-    
-    // First attempt is just going for audio - we're discarding the video data.
-    // We still need to read the full frame, but we're only going to play the audio.
-    // We'll also need to read the next frame's audio data into the alternate buffer.
+
+	// Setup TFT
+    tft_init();
     
     uint8_t *current_buffer = framebuffer_a;
     uint8_t *alternate_buffer = framebuffer_b;
+    uint16_t start = 0;
     
     for (frame_number = 0; ; frame_number++) {
         // Read frame
-        uint16_t start = millis();
         BIS(P2OUT, BIT6);
         if (!read_frame(alternate_buffer)) {
             for (;;);
         }
         BIC(P2OUT, BIT6);
-        uint16_t x = millis() - start;
-        displayNum(x);
-//        displayNum(current_buffer[VIDEO_FRAME_SIZE]);
-//        displayNum(frame_number / 30);
+
+        // Display frame time
 
         // Delay until our next frame flag is set
         while (nextFrame == 0);
         nextFrame = 0;
+        start = millis();
+
 
         // Swap buffers
         uint8_t *tmp = current_buffer;
         current_buffer = alternate_buffer;
         alternate_buffer = tmp;
 
-
         // Reconfigure DMA0 to point at our new frame's audio buffer.
         DMA0SA = (__SFR_FARPTR)(uint32_t) (current_buffer + VIDEO_FRAME_SIZE);
         BIS(DMA0CTL, DMAABORT);
         BIC(DMA0CTL, DMAABORT);
-        DMA0CTL |= DMAEN + DMAIE;
+        DMA0CTL |= DMAEN;
         
-        // TODO: send display data in current_buffer here
+        tft_command(TFT_CASET, 4, 0, 0, 0, 128);
+        tft_command(TFT_RASET, 4, 0, 0, 0, 160);
+        tft_command(TFT_MADCTL, 1, 0x00);
+        /// Decode and send frame
+        static const uint16_t lookup[2] = {0x0000, 0xFFFF};
+        uint8_t *f = current_buffer;
+        tft_command(TFT_COLMOD, 1, 5); // Not observed!
+        tft_command(TFT_RAMWR, 0);
+        static const unsigned int lsize = 160;
+        static const unsigned int csize = 128;
+        uint16_t line_a[csize];
+        uint16_t line_b[csize];
+        uint16_t *line = line_a;
+
+        for (unsigned int i = 0; i < lsize; i++) {
+//            if (i != 0) {
+//                // wait for DMA to finish
+//                while (!dmaDone);
+//            }
+//            line = (line == line_a) ? line_b : line_a;
+            line = line_a;
+            for (unsigned int j = 0; j < csize / 8; j++) {
+                uint8_t packed = *f++;
+                for (unsigned int k = 0; k < 8; k++) {
+                    line[j * 8 + 7 - k] = lookup[(packed & 1)];
+                    packed >>= 1;
+                }
+            }
+            spi_send_dma((uint8_t*)line, csize * 2);
+//            dma_tx_setup((uint8_t *)line, csize * 2);
+//            dmaDone = 0;
+//            DMA2CTL |= DMAEN + DMAIE;
+//            UCB0IFG &= ~(UCTXIFG | UCRXIFG);
+//            UCB0IFG |= UCTXIFG | UCRXIFG;
+        }
+        tft_unselect();
+        uint16_t x = millis() - start;
+        displayNum(x);
     }
 }
 
@@ -188,7 +224,8 @@ bool read_frame(uint8_t *frame_buffer) {
 
 #pragma vector=TIMER0_A0_VECTOR
 interrupt void frameInterrupt() {
-    nextFrame = 1;
+    nextFrame = true;
+    TA0IV = 0;
 }
 
 #pragma vector=TIMER0_B1_VECTOR

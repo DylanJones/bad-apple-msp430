@@ -37,7 +37,7 @@ def main():
         resized = cv2.resize(thresh, OUTPUT_SIZE)
 
         # Squeeze down to one bit per pixel
-        squished = np.packbits(resized, axis=1)
+        squished = np.packbits(resized.T, axis=1)
         # Convert to a list of bytes
         squished = squished.tobytes()
 
