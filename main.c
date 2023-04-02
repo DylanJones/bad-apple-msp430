@@ -40,7 +40,7 @@ uint8_t __attribute__((persistent)) block_buffer[512] = { 0 };
 
 // SRAM globals
 uint16_t frame_number = 0;
-uint16_t current_block = 0;
+uint32_t current_block = 0;
 uint16_t current_block_offset = 0;
 volatile bool nextFrame = 0;
 
