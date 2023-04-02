@@ -24,9 +24,6 @@
 #include <msp430.h>
 #include <sdcard.h>
 #include <Timing.h>
-#include <stdlib.h>
-#include <string.h>
-#include <cstring>
 #include "spi.h"
 #include "defines.h"
 #include "lcd.h"
@@ -34,7 +31,7 @@
 
 
 #define AUDIO_FRAME_SIZE 1470
-#define VIDEO_FRAME_SIZE 2880
+#define VIDEO_FRAME_SIZE 2560
 #define FRAME_SIZE (AUDIO_FRAME_SIZE + VIDEO_FRAME_SIZE)
 
 uint8_t  __attribute__((persistent)) framebuffer_a[FRAME_SIZE] = { 0 };
@@ -49,7 +46,12 @@ volatile bool nextFrame = 0;
 
 // Functions
 bool read_frame(uint8_t *frame_buffer);
+void decode_and_write_frame(uint8_t *current_buffer);
 
+
+/**
+ * MSP init: initialize misc. peripherals and pins
+ */
 void msp_init() {
     WDTCTL = WDTPW | WDTHOLD;   // stop watchdog timer
     PM5CTL0 &= ~LOCKLPM5;         // Unlock ports from power manager
@@ -104,7 +106,7 @@ void msp_init() {
 }
 
 /**
- * main.c
+ * Main loop!
  */
 void main(void) {
 	msp_init();
@@ -133,7 +135,9 @@ void main(void) {
         // Display frame time
 
         // Delay until our next frame flag is set
-        while (nextFrame == 0);
+        uint16_t x = millis() - start;
+        displayNum(x);
+        while (!nextFrame);// __low_power_mode_0();
         nextFrame = 0;
         start = millis();
 
@@ -144,7 +148,7 @@ void main(void) {
         alternate_buffer = tmp;
 
         // Reconfigure DMA0 to point at our new frame's audio buffer.
-        DMA0SA = (__SFR_FARPTR)(uint32_t) (current_buffer + VIDEO_FRAME_SIZE);
+        __data20_write_long((unsigned long)DMA0SA, (unsigned long)(current_buffer + VIDEO_FRAME_SIZE));
         BIS(DMA0CTL, DMAABORT);
         BIC(DMA0CTL, DMAABORT);
         DMA0CTL |= DMAEN;
@@ -152,42 +156,58 @@ void main(void) {
         tft_command(TFT_CASET, 4, 0, 0, 0, 128);
         tft_command(TFT_RASET, 4, 0, 0, 0, 160);
         tft_command(TFT_MADCTL, 1, 0x00);
-        /// Decode and send frame
-        static const uint16_t lookup[2] = {0x0000, 0xFFFF};
-        uint8_t *f = current_buffer;
-        tft_command(TFT_COLMOD, 1, 5); // Not observed!
-        tft_command(TFT_RAMWR, 0);
-        static const unsigned int lsize = 160;
-        static const unsigned int csize = 128;
-        uint16_t line_a[csize];
-        uint16_t line_b[csize];
-        uint16_t *line = line_a;
-
-        for (unsigned int i = 0; i < lsize; i++) {
-//            if (i != 0) {
-//                // wait for DMA to finish
-//                while (!dmaDone);
-//            }
-//            line = (line == line_a) ? line_b : line_a;
-            line = line_a;
-            for (unsigned int j = 0; j < csize / 8; j++) {
-                uint8_t packed = *f++;
-                for (unsigned int k = 0; k < 8; k++) {
-                    line[j * 8 + 7 - k] = lookup[(packed & 1)];
-                    packed >>= 1;
-                }
-            }
-            spi_send_dma((uint8_t*)line, csize * 2);
-//            dma_tx_setup((uint8_t *)line, csize * 2);
-//            dmaDone = 0;
-//            DMA2CTL |= DMAEN + DMAIE;
-//            UCB0IFG &= ~(UCTXIFG | UCRXIFG);
-//            UCB0IFG |= UCTXIFG | UCRXIFG;
-        }
-        tft_unselect();
-        uint16_t x = millis() - start;
-        displayNum(x);
+        decode_and_write_frame(current_buffer);
     }
+}
+
+/**
+ * This pragma causes the function to be copied into SRAM and executed
+ * from there.  Since we're executing at SMCLK = 16MHz, we need 1
+ * wait-state for every FRAM access which theoretically slows down
+ * code.  By copying the most critical functions into RAM, we're able
+ * to go from ~21ms to 18ms execution time on this function.
+ */
+#pragma CODE_SECTION (decode_and_write_frame, ".TI.ramfunc")
+void decode_and_write_frame(uint8_t *current_buffer) {
+    unsigned int i, j, k;
+    /// Decode and send frame
+    static const uint16_t lookup[2] = {0x0000, 0xFFFF};
+    uint8_t *f = current_buffer;
+    // Signal the start of our write to frame memory
+    tft_command(TFT_RAMWR, 0);
+    static const unsigned int lsize = 160;
+    static const unsigned int csize = 128;
+    uint16_t line_a[csize];
+    uint16_t line_b[csize];
+    uint16_t *line = line_a;
+
+    for (i = 0; i < lsize; i++) {
+        line = (line == line_a) ? line_b : line_a;
+        for (j = 0; j < csize / 8; j++) {
+            uint8_t packed = *f++;
+            for (k = 0; k < 8; k++) {
+                line[j * 8 + 7 - k] = lookup[(packed & 1)];
+                packed >>= 1;
+            }
+        }
+        if (i != 0) {
+            // wait for DMA to finish
+            while (!dmaDone);
+        } else {
+            // Setup the DMAs to transfer lines in the background
+            dma_tx_setup((uint8_t *)line, csize * 2);
+        }
+        dmaDone = 0;
+        __data20_write_long((unsigned long)&DMA2SA, (unsigned long)line);
+        DMA2CTL |= DMAEN + DMAIE;
+        UCB0IFG &= ~(UCTXIFG | UCRXIFG);
+        UCB0IFG |= UCTXIFG | UCRXIFG;
+//        spi_send_dma(line, csize * 2);
+    }
+    // wait for DMA to finish
+    while (!dmaDone);
+    DMA2CTL = 0;
+    tft_unselect();
 }
 
 
@@ -226,10 +246,5 @@ bool read_frame(uint8_t *frame_buffer) {
 interrupt void frameInterrupt() {
     nextFrame = true;
     TA0IV = 0;
-}
-
-#pragma vector=TIMER0_B1_VECTOR
-interrupt void audioGo() {
-    P3OUT ^= BIT6;
-    TB0IV = 0;
+    __low_power_mode_off_on_exit();
 }

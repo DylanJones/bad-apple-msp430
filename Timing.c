@@ -5,8 +5,9 @@
  *      Author: dylan
  */
 
-#include <Timing.h>
 #include <stdbool.h>
+#include <msp430.h>
+#include <Timing.h>
 
 volatile static bool msTriggered = false;
 

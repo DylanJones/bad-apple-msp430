@@ -1,5 +1,5 @@
 /*
- * Timer.hpp
+ * Timing.h
  *
  *  Created on: Mar 1, 2023
  *      Author: dylan
@@ -24,7 +24,6 @@ extern "C" {
 /**
  * Typedef to make it more explicit when we're dealing with milliseconds
  */
-//typedef uint16_t millis_t;
 typedef uint16_t millis_t;
 
 /*

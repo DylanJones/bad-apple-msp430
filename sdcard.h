@@ -7,14 +7,13 @@
 
 #ifndef SDCARD_H_
 #define SDCARD_H_
+#include "defines.h"
+#include <stdint.h>
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include "defines.h"
-#include <stdint.h>
-#include <SdInfo.h>
-#include <stdbool.h>
 
 extern uint16_t sd_errorCode;
 extern uint16_t sd_status;

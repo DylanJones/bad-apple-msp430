@@ -11,58 +11,53 @@
 
 // SD card errors
 // See the SD Specification for command info.
-#define SD_ERROR_CODE_LIST\
-  SD_CARD_ERROR(NONE, "No error")\
-  SD_CARD_ERROR(CMD0, "Card reset failed")\
-  SD_CARD_ERROR(CMD2, "SDIO read CID")\
-  SD_CARD_ERROR(CMD3, "SDIO publish RCA")\
-  SD_CARD_ERROR(CMD6, "Switch card function")\
-  SD_CARD_ERROR(CMD7, "SDIO card select")\
-  SD_CARD_ERROR(CMD8, "Send and check interface settings")\
-  SD_CARD_ERROR(CMD9, "Read CSD data")\
-  SD_CARD_ERROR(CMD10, "Read CID data")\
-  SD_CARD_ERROR(CMD12, "Stop multiple block read")\
-  SD_CARD_ERROR(CMD13, "Read card status")\
-  SD_CARD_ERROR(CMD17, "Read single block")\
-  SD_CARD_ERROR(CMD18, "Read multiple blocks")\
-  SD_CARD_ERROR(CMD24, "Write single block")\
-  SD_CARD_ERROR(CMD25, "Write multiple blocks")\
-  SD_CARD_ERROR(CMD32, "Set first erase block")\
-  SD_CARD_ERROR(CMD33, "Set last erase block")\
-  SD_CARD_ERROR(CMD38, "Erase selected blocks")\
-  SD_CARD_ERROR(CMD58, "Read OCR register")\
-  SD_CARD_ERROR(CMD59, "Set CRC mode")\
-  SD_CARD_ERROR(ACMD6, "Set SDIO bus width")\
-  SD_CARD_ERROR(ACMD13, "Read extended status")\
-  SD_CARD_ERROR(ACMD23, "Set pre-erased count")\
-  SD_CARD_ERROR(ACMD41, "Activate card initialization")\
-  SD_CARD_ERROR(ACMD51, "Read SCR data")\
-  SD_CARD_ERROR(READ_TOKEN, "Bad read data token")\
-  SD_CARD_ERROR(READ_CRC, "Read CRC error")\
-  SD_CARD_ERROR(READ_FIFO, "SDIO fifo read timeout")\
-  SD_CARD_ERROR(READ_REG, "Read CID or CSD failed.")\
-  SD_CARD_ERROR(READ_START, "Bad readStart argument")\
-  SD_CARD_ERROR(READ_TIMEOUT, "Read data timeout")\
-  SD_CARD_ERROR(STOP_TRAN, "Multiple block stop failed")\
-  SD_CARD_ERROR(TRANSFER_COMPLETE, "SDIO transfer complete")\
-  SD_CARD_ERROR(WRITE_DATA, "Write data not accepted")\
-  SD_CARD_ERROR(WRITE_FIFO, "SDIO fifo write timeout")\
-  SD_CARD_ERROR(WRITE_START, "Bad writeStart argument")\
-  SD_CARD_ERROR(WRITE_PROGRAMMING, "Flash programming")\
-  SD_CARD_ERROR(WRITE_TIMEOUT, "Write timeout")\
-  SD_CARD_ERROR(DMA, "DMA transfer failed")\
-  SD_CARD_ERROR(ERASE, "Card did not accept erase commands")\
-  SD_CARD_ERROR(ERASE_SINGLE_SECTOR, "Card does not support erase")\
-  SD_CARD_ERROR(ERASE_TIMEOUT, "Erase command timeout")\
-  SD_CARD_ERROR(INIT_NOT_CALLED, "Card has not been initialized")\
-  SD_CARD_ERROR(INVALID_CARD_CONFIG, "Invalid card config")\
-  SD_CARD_ERROR(FUNCTION_NOT_SUPPORTED, "Unsupported SDIO command")
-
 enum {
-#define SD_CARD_ERROR(e, m) SD_CARD_ERROR_##e,
-  SD_ERROR_CODE_LIST
-#undef SD_CARD_ERROR
-  SD_CARD_ERROR_UNKNOWN
+    SD_CARD_ERROR_NONE,  // "No error"
+    SD_CARD_ERROR_CMD0,  // "Card reset failed"
+    SD_CARD_ERROR_CMD2,  // "SDIO read CID"
+    SD_CARD_ERROR_CMD3,  // "SDIO publish RCA"
+    SD_CARD_ERROR_CMD6,  // "Switch card function"
+    SD_CARD_ERROR_CMD7,  // "SDIO card select"
+    SD_CARD_ERROR_CMD8,  // "Send and check interface settings"
+    SD_CARD_ERROR_CMD9,  // "Read CSD data"
+    SD_CARD_ERROR_CMD10,  // "Read CID data"
+    SD_CARD_ERROR_CMD12,  // "Stop multiple block read"
+    SD_CARD_ERROR_CMD13,  // "Read card status"
+    SD_CARD_ERROR_CMD17,  // "Read single block"
+    SD_CARD_ERROR_CMD18,  // "Read multiple blocks"
+    SD_CARD_ERROR_CMD24,  // "Write single block"
+    SD_CARD_ERROR_CMD25,  // "Write multiple blocks"
+    SD_CARD_ERROR_CMD32,  // "Set first erase block"
+    SD_CARD_ERROR_CMD33,  // "Set last erase block"
+    SD_CARD_ERROR_CMD38,  // "Erase selected blocks"
+    SD_CARD_ERROR_CMD58,  // "Read OCR register"
+    SD_CARD_ERROR_CMD59,  // "Set CRC mode"
+    SD_CARD_ERROR_ACMD6,  // "Set SDIO bus width"
+    SD_CARD_ERROR_ACMD13,  // "Read extended status"
+    SD_CARD_ERROR_ACMD23,  // "Set pre-erased count"
+    SD_CARD_ERROR_ACMD41,  // "Activate card initialization"
+    SD_CARD_ERROR_ACMD51,  // "Read SCR data"
+    SD_CARD_ERROR_READ_TOKEN,  // "Bad read data token"
+    SD_CARD_ERROR_READ_CRC,  // "Read CRC error"
+    SD_CARD_ERROR_READ_FIFO,  // "SDIO fifo read timeout"
+    SD_CARD_ERROR_READ_REG,  // "Read CID or CSD failed."
+    SD_CARD_ERROR_READ_START,  // "Bad readStart argument"
+    SD_CARD_ERROR_READ_TIMEOUT,  // "Read data timeout"
+    SD_CARD_ERROR_STOP_TRAN,  // "Multiple block stop failed"
+    SD_CARD_ERROR_TRANSFER_COMPLETE,  // "SDIO transfer complete"
+    SD_CARD_ERROR_WRITE_DATA,  // "Write data not accepted"
+    SD_CARD_ERROR_WRITE_FIFO,  // "SDIO fifo write timeout"
+    SD_CARD_ERROR_WRITE_START,  // "Bad writeStart argument"
+    SD_CARD_ERROR_WRITE_PROGRAMMING,  // "Flash programming"
+    SD_CARD_ERROR_WRITE_TIMEOUT,  // "Write timeout"
+    SD_CARD_ERROR_DMA,  // "DMA transfer failed"
+    SD_CARD_ERROR_ERASE,  // "Card did not accept erase commands"
+    SD_CARD_ERROR_ERASE_SINGLE_SECTOR,  // "Card does not support erase"
+    SD_CARD_ERROR_ERASE_TIMEOUT,  // "Erase command timeout"
+    SD_CARD_ERROR_INIT_NOT_CALLED,  // "Card has not been initialized"
+    SD_CARD_ERROR_INVALID_CARD_CONFIG,  // "Invalid card config"
+    SD_CARD_ERROR_FUNCTION_NOT_SUPPORTED,  // "Unsupported SDIO command"
+    SD_CARD_ERROR_UNKNOWN
 };
 
 

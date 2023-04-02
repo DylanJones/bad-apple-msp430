@@ -9,11 +9,12 @@
  */
 
 #include <msp430.h>
-#include <sdcard.h>
+#include "sdcard.h"
 #include "spi.h"
 #include "defines.h"
 #include "Timing.h"
 #include "lcd.h"
+#include "SdInfo.h"
 
 // Globals (these are emulating SdFat's class member variables)
 // Error code from last error
