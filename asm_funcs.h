@@ -11,7 +11,7 @@
 extern "C" {
 #endif
 
-extern int asmfunc(int a);
+extern int asmfunc(char *a);
 
 #ifdef __cplusplus
 }

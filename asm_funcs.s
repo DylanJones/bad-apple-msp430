@@ -1,14 +1,23 @@
 	.global asmfunc
 	.global decode_display
 	; FB to spew
-	.global current_framebuffer
 
 ; int asmfunc(int a) {
 ; 	return a + a;
 ; }
 asmfunc:
-	add R12, R12
-	ret
+	mov #0, R13
+top:
+	mov R13, R14
+	add R12, R14
+	mov.b 0(R14), R14
+	tst.b R14
+	jz done
+	inc.w R13
+	jmp top
+done:
+	mov R13, R12
+	reta
 
 
 decode_display:
@@ -20,7 +29,7 @@ decode_display:
 	; R12: constant 0x3
 
 dd_loop:
-		mov current_framebuffer(R5), R6 ; load 8 pixels to register (3? fram? cycles) (4 w/ one wait state?)
+		;mov current_framebuffer(R5), R6 ; load 8 pixels to register (3? fram? cycles) (4 w/ one wait state?)
 		mov #4, R8   ; store loop counter for loop_inner (2 cycles)
 		mov R6, R7   ; backup R7 (1 cycles)
 dd_loop_inner:

@@ -51,10 +51,13 @@ def main():
         # Write the audio to the binary file
         binary_output.write(audio.tobytes())
 
-        # Duplicate write
-        out.write(cv2.cvtColor(resized, cv2.COLOR_GRAY2BGR))
+        # This video is 15fps, so grab another audio frame and duplicate the video frame
+        audio = wav.readframes(44100 // 30)
+        audio = np.frombuffer(audio, dtype=np.uint8) >> 2
         binary_output.write(squished)
         binary_output.write(audio.tobytes())
+        
+        print(len(squished), len(audio.tobytes()), end=', ')
 
         # Print out progress bar and frame size
         print(f"Frame {i}, frame size: {len(squished)}, audio size {44100 // 30}, total frame size {len(squished) + 44100//30}", end="\r")

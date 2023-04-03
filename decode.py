@@ -5,22 +5,22 @@ import zlib
 import numpy as np
 import wave
 
-OUTPUT_SIZE = (180, 128)
+OUTPUT_SIZE = (160, 128)
 AUDIO_SIZE = 44100 // 30
-VIDEO_SIZE = 180 * 128 // 8
+VIDEO_SIZE = 160 * 128 // 8
 FRAME_SIZE = AUDIO_SIZE + VIDEO_SIZE
 
 ### Verify correct encoding by decoding the file
 def main():
     i = 0
     # Open the encoded file
-    with open("badapple-encoded.bin", "rb") as f:
+    with open("lagtrain-encoded.bin", "rb") as f:
         while True:
             # Frame container
             frame = np.zeros(OUTPUT_SIZE, dtype=np.uint8)
-            for r in range(180):
+            for r in range(OUTPUT_SIZE[0]):
                 # Read a single row
-                row = f.read(128 // 8)
+                row = f.read(OUTPUT_SIZE[1] // 8)
                 # Convert to np bitarray
                 row = np.unpackbits(np.frombuffer(row, dtype=np.uint8))
                 # Add to frame

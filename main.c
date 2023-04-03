@@ -24,6 +24,7 @@
 #include <msp430.h>
 #include <sdcard.h>
 #include <Timing.h>
+#include "asm_funcs.h"
 #include "spi.h"
 #include "defines.h"
 #include "lcd.h"
@@ -47,6 +48,7 @@ volatile bool nextFrame = 0;
 // Functions
 bool read_frame(uint8_t *frame_buffer);
 void decode_and_write_frame(uint8_t *current_buffer);
+void memcpy_dma(void *dst, void *src, size_t size);
 
 
 /**
@@ -66,6 +68,14 @@ void msp_init() {
     spi_init();
 
     // Pins:
+    __disable_interrupt();
+    BIC(P2DIR, BIT1 | BIT2); // button P2.1 and P2.2 for seeking
+    BIS(P2IE, BIT1 | BIT2);
+    BIS(P2IES, BIT1 | BIT2);
+    BIS(P2REN, BIT1 | BIT2);
+    BIC(P2IFG, BIT1 | BIT2);
+    __enable_interrupt();
+
     BIS(P2DIR, BIT2 | BIT6 | BIT7);
     BIS(P2OUT, BIT2 | BIT6 | BIT7);
     BIS(P3DIR, BIT6 | BIT7);
@@ -111,6 +121,9 @@ void msp_init() {
 void main(void) {
 	msp_init();
 
+//	displayNum(asmfunc("test 4"));
+//	for(;;);
+
 	// Setup SD card
 	if (!sd_init()) {
         displayNum(sd_errorCode);
@@ -137,7 +150,7 @@ void main(void) {
         // Delay until our next frame flag is set
         uint16_t x = millis() - start;
         displayNum(x);
-        while (!nextFrame);// __low_power_mode_0();
+        while (!nextFrame) __low_power_mode_1();
         nextFrame = 0;
         start = millis();
 
@@ -148,14 +161,14 @@ void main(void) {
         alternate_buffer = tmp;
 
         // Reconfigure DMA0 to point at our new frame's audio buffer.
-        __data20_write_long((unsigned long)DMA0SA, (unsigned long)(current_buffer + VIDEO_FRAME_SIZE));
         BIS(DMA0CTL, DMAABORT);
+        DMA0SA = (current_buffer + VIDEO_FRAME_SIZE);
         BIC(DMA0CTL, DMAABORT);
         DMA0CTL |= DMAEN;
         
         tft_command(TFT_CASET, 4, 0, 0, 0, 128);
         tft_command(TFT_RASET, 4, 0, 0, 0, 160);
-        tft_command(TFT_MADCTL, 1, 0x00);
+        tft_command(TFT_MADCTL, 1, 0x40);
         decode_and_write_frame(current_buffer);
     }
 }
@@ -241,10 +254,45 @@ bool read_frame(uint8_t *frame_buffer) {
     return true;
 }
 
+void memcpy_dma(void *dst, void *src, size_t size) {
+    DMA1CTL = 0;
+    __data20_write_long(&DMA1SA, src);
+    __data20_write_long(&DMA1DA, dst);
+    DMA1SZ = size / 2;
+    DMACTL0 |= DMA1TSEL__DMAREQ;
+    DMA1CTL = DMADT_1 + DMAEN + DMALEVEL + DMAREQ + DMAIE;
+    // DMA in block mode is blocking, so it's done by now.
+    while (!dmaDone);
+    DMA1CTL = 0; // Disarm it
+    if (size & 1) { // Deal w/ odd numbers of bytes
+        ((uint8_t*)dst)[size - 1] = ((uint8_t*)src)[size - 1];
+    }
+}
+
 
 #pragma vector=TIMER0_A0_VECTOR
 interrupt void frameInterrupt() {
     nextFrame = true;
     TA0IV = 0;
     __low_power_mode_off_on_exit();
+}
+
+#pragma vector=PORT2_VECTOR
+interrupt void buttonInterrupt() {
+    P2IV = 0;
+    return;
+    switch (P2IV) {
+    case P2IV_P2IFG1:
+        // Beginning of video
+        current_block = 0;
+        current_block_offset = 0;
+        break;
+    case P2IV_P2IFG2:
+        current_block = 51728;
+        current_block_offset = 424;
+        break;
+    default:
+        break;
+    }
+    P2IV = 0;
 }
