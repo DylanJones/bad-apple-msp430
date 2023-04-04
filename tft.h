@@ -16,18 +16,33 @@ extern "C" {
 #endif
 
 
-void tft_init();
-/*
- * Send a single line worth of pixels
+/**
+ * Initialize the connected ST7735 TFT display.
  */
-void tft_send_line(uint8_t *pixline, size_t size);
+void tft_init();
 
+/**
+ * Send a command to the connected ST7735 TFT display.
+ * First argument is the command byte, second argument is an interger
+ *   specifying how many parameters will follow, and then the rest of
+ *   the varargs are those parameters.
+ */
 void tft_command(uint8_t cmd, size_t argc, ...);
 
+/*
+ * Set chip select low and select the TFT.
+ */
 void tft_select();
-void tft_unselect();
-void tft_send_data(bool dc);
 
+/*
+ * Set chip select high and deselect the TFT.
+ */
+void tft_unselect();
+
+/*
+ * True / HIGH for data, false / LOW for command
+ */
+void tft_dc(bool dc);
 
 
 // Commands

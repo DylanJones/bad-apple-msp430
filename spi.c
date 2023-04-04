@@ -10,9 +10,7 @@
 #include <stdint.h>
 #include <msp430.h>
 
-/**
- * Initialize the UCB0 SPI peripheral.
- */
+
 void spi_init() {
     BIS(UCB0CTLW0, UCSWRST); // hold UCB0 logic in reset state while we're configuring stuff
 
@@ -40,10 +38,8 @@ static void dma_rx_setup(uint8_t *buf, size_t size) {
     // Setup DMA1 to receive
     DMACTL0 |= DMA1TSEL__UCB0RXIFG0;
     DMA1CTL = DMADT_0 + DMADSTINCR_3 + DMASRCINCR_0 + DMASRCBYTE + DMADSTBYTE;
-//    DMA1SA = (__SFR_FARPTR)(uint32_t)&UCB0RXBUF;
     __data20_write_long((unsigned long)&DMA1SA, (unsigned long)&UCB0RXBUF);
     DMA1SZ = size;
-//    DMA1DA = buf;
     __data20_write_long((unsigned long)&DMA1DA, (unsigned long)buf);
 }
 
@@ -51,24 +47,12 @@ void dma_tx_setup(const uint8_t *buf, size_t size) {
     // Setup DMA2 to transmit
     DMACTL1 |= DMA2TSEL__UCB0TXIFG0;
     DMA2CTL = DMADT_0 + DMADSTINCR_0 + DMASRCINCR_3 + DMASRCBYTE + DMADSTBYTE;
-//    DMA2SA = buf;
     __data20_write_long((unsigned long)&DMA2SA, (unsigned long)buf);
     DMA2SZ = size;
-//    DMA2DA = &UCB0TXBUF;
     __data20_write_long((unsigned long)&DMA2DA, (unsigned long)&UCB0TXBUF);
 }
 
-volatile bool dmaDone = 0;
-#pragma vector=DMA_VECTOR
-__interrupt void dmaInterrupt() {
-    dmaDone = 1;
-    DMAIV = 0;
-}
 
-/**
- * One SPI transaction: shift out the bytes on *output*, while reading the results to the buffer *input*.
- * Both buffers are the same size, specified by parameter `size`.
- */
 void spi_transaction(const uint8_t *output, uint8_t *input, size_t size) {
     unsigned int i;
     // TODO: use DMA instead
@@ -117,8 +101,6 @@ void spi_receive_dma(uint8_t *input, uint8_t fillByte, size_t size) {
      dmaDone = 0;
      DMA1CTL |= DMAEN;
      DMA2CTL |= DMAEN + DMAIE;
-//     UCB0IFG &= ~(UCTXIFG | UCRXIFG);
-//     UCB0IFG |= UCTXIFG | UCRXIFG;
      UCB0TXBUF = 0xFF;
      // wait for DMAs to finish
      while(!dmaDone);
@@ -135,4 +117,13 @@ uint8_t spi_send_byte(uint8_t byte) {
 
 uint8_t spi_receive_byte() {
     return spi_send_byte(0xFF);
+}
+
+
+volatile bool dmaDone = 0;
+
+#pragma vector=DMA_VECTOR
+__interrupt void dmaInterrupt() {
+    dmaDone = 1;
+    DMAIV = 0;
 }

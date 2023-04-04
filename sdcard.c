@@ -32,11 +32,6 @@ static inline void sd_unselect() {
     BIS(P3OUT, BIT7);
 }
 
-/**
- * Byte for command, 4 bytes for argument.
- * Returns the first byte of the response (R1 byte)
- * or 0xFF if it times out.
- */
 uint8_t sd_command(uint8_t cmd, uint32_t arg) {
     int i;
     uint8_t tx_buf[6] = { 0xFF };
