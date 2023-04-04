@@ -2,7 +2,7 @@
 [<img src='assets/setup.jpg'></img>](https://www.youtube.com/watch?v=TggQ8r52Djg)
 [<img src='assets/demo.gif'></img>](https://www.youtube.com/watch?v=TggQ8r52Djg)
 
-This is a silly little project to get the MSP430FR6989, a microcontroller we had to use for a class ([ECE447](https://people-ece.vse.gmu.edu/~jkaps/courses/ece447-f20/index.html)) and that's intended to be used for ultra low-power metering or deeply embedded applications, to play a full 30 FPS video and produce reasonable quality audio in real time.  
+This is a silly little project to get the MSP430FR6989, a microcontroller that's intended to be used for ultra low-power metering or deeply embedded applications, to play a full 30 FPS video and produce reasonable quality audio in real time.  We were originally introduced to this microcontroller in ([ECE447](https://people-ece.vse.gmu.edu/~jkaps/courses/ece447-f20/index.html)), but all of that class's labs were relatively straightforward and didn't require much in the way of heavy optimization.
 
 This project somehow uses *no* external libraries (I didn't write lcd.h, lcd.c, or msp430fr6989.h, but they're all relatively simple and fully included in this repo), and manages to read, decode, and display each frame in about 24ms.  By making heavy use of the DMA peripheral, especially with background DMAs, it's able to get the frame display done so fast that there's still time for 10ms of low-power sleep mode each frame :)
 
