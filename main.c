@@ -16,9 +16,8 @@
  * Main loop:
  * 1. Read one frame and write it to FRAM buffer A. (May overrun a little bit - make sure to keep hold of it)
  * 2. Reconfigure DMA0 to point to our newly acquired audio buffer - this will start playing the current frame's worth of audio.
- * 3. Start writing out the current video frame to the display via SPI.
- * 4. DMA-copy the leftover bits from the end of our current blocks to the beginning of the alternate buffer.
- * 5. Switch buffers, and repeat.
+ * 3. Simultaneously decode and write out the newly acquired framebuffer to the display via SPI.
+ * 4. Switch buffers, and repeat.
  */
 
 #include <msp430.h>
