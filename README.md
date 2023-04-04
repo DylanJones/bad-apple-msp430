@@ -1,5 +1,6 @@
 # Bad Apple on MSP430
-
+[<img src='assets/setup.jpg'></img>](https://www.youtube.com/watch?v=TggQ8r52Djg)
+[<img src='assets/demo.gif'></img>](https://www.youtube.com/watch?v=TggQ8r52Djg)
 
 This is a silly little project to get the MSP430FR6989, a microcontroller we had to use for a class ([ECE447](https://people-ece.vse.gmu.edu/~jkaps/courses/ece447-f20/index.html)) and that's intended to be used for ultra low-power metering or deeply embedded applications, to play a full 30 FPS video and produce reasonable quality audio in real time.  
 
